@@ -1,0 +1,37 @@
+-- vim.o.runtimepath
+
+describe("ManagerTest", function()
+  -- local Mark = require("neo-tree.sources.backtrace.utils.mark")
+  -- local Flow = require("neo-tree.sources.backtrace.utils.flow")
+  -- local Mgr = require("neo-tree.sources.backtrace.utils.manager")
+  local path = require("plenary.path")
+  local scan = require("plenary.scandir")
+  local plugins = scan.scan_dir(path:new("~/.local/share/nvim/lazy"):expand(), { depth = 1, only_dirs = true })
+  vim.o.runtimepath = vim.o.runtimepath .. "," .. table.concat(plugins, ",")
+  vim.print(vim.inspect(vim.split(vim.o.runtimepath, ",")))
+
+  before_each(function() end)
+
+  it("MarkTest", function()
+    -- local mark = Mark:new(0, debug.getinfo(2, "l").currentline, 0):toNode("1")
+    -- vim.print(vim.inspect(mark))
+  end)
+
+  it("FlowTest", function()
+    -- local flow = Flow:new()
+    -- flow:addMark(Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- assert.equals(1, flow:size())
+    -- flow:addMark(Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- assert.equals(2, flow:size())
+    -- vim.print(vim.inspect(flow:toNode("1", "test_flow")))
+  end)
+
+  it("ManagerTest", function()
+    -- local mgr = Mgr:new("manager")
+    -- mgr:addMark("flow1", Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- mgr:addMark("flow1", Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- mgr:addMark("flow2", Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- mgr:addMark("flow2", Mark:new(0, debug.getinfo(2, "l").currentline, 0))
+    -- vim.print(mgr:toNode())
+  end)
+end)
