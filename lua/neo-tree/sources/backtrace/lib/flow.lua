@@ -1,3 +1,5 @@
+local MARK = require("neo-tree.sources.backtrace.lib.mark")
+
 ---@class Flow
 --- @field marks Mark[]
 local Flow = {}
@@ -33,10 +35,6 @@ function Flow:getMark(index)
   return self.marks[index]
 end
 
-function Flow:getMarks()
-  return self.marks
-end
-
 ---@param id string
 ---@param name string
 function Flow:toNode(id, name)
@@ -53,8 +51,16 @@ function Flow:toNode(id, name)
   }
 end
 
-function Flow:size()
-  return #self.marks
+---@return DumpedMark[]
+function Flow:dumps()
+  return vim.iter(self.marks):map(MARK.dumps):totable()
+end
+
+---@param dumped DumpedMark[]
+function Flow:loads(dumped)
+  local ret = Flow:new()
+  ret.marks = vim.iter(dumped):map(MARK.loads):totable()
+  return ret
 end
 
 return Flow

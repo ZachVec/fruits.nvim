@@ -33,8 +33,12 @@ end
 ---@param old string
 ---@param new string
 function MarksManager:renameFlow(old, new)
+  if old == new then
+    return false
+  end
   self.flows[new] = self.flows[old]
   self.flows[old] = nil
+  return true
 end
 
 ---@param name string
@@ -42,32 +46,25 @@ function MarksManager:getFlow(name)
   return self.flows[name]
 end
 
+--- @return table<string, DumpedMark[]>
 function MarksManager:dumps()
   local dumpedTable = {}
   for name, flow in pairs(self.flows) do
-    dumpedTable[name] = flow:getMarks()
+    dumpedTable[name] = flow:dumps()
   end
-  return vim.json.encode(dumpedTable)
+  return dumpedTable
 end
 
----@param str string
-function MarksManager:loads(str)
+---@param dumpedManager table<string, DumpedMark[]>
+---@return MarksManager
+function MarksManager:loads(dumpedManager)
   local manager = MarksManager:new()
-  local dumpedTable = vim.json.decode(str)
-  for name, marks in pairs(dumpedTable) do
-    vim.iter(marks):each(function(mark)
-      manager:addMark(name, mark)
-    end)
+  for name, marks in pairs(dumpedManager) do
+    manager.flows[name] = Flow:loads(marks)
   end
   manager.isDirty = false
   return manager
 end
-
---- @class Node
----  @field id string
----  @field name string
----  @field type string
----  @field children? Node[]
 
 function MarksManager:toNode()
   --- @param index integer
