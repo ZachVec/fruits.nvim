@@ -37,7 +37,8 @@ end
 
 ---@param id string
 ---@param name string
-function Flow:toNode(id, name)
+---@param is_selected boolean
+function Flow:toNode(id, name, is_selected)
   ---@param index integer
   ---@param mark Mark
   local function toNode(index, mark)
@@ -48,6 +49,9 @@ function Flow:toNode(id, name)
     name = name,
     type = "flow",
     children = vim.iter(ipairs(self.marks)):map(toNode):totable(),
+    extra = {
+      is_selected = is_selected,
+    },
   }
 end
 

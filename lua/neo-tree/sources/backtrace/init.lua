@@ -6,7 +6,7 @@ local M = {
   -- This is the name our source will be referred to as within Neo-tree
   name = "backtrace",
   -- This is how our source will be displayed in the Source Selector
-  display_name = "Backtrace",
+  display_name = "󰃀 Trace",
 
   default_config = require("neo-tree.sources.backtrace.defaults"),
 
@@ -28,14 +28,13 @@ local M = {
 
 function M.add_mark()
   if not actions:add_mark() then
-    vim.notify("Flow not selected, please select one.", vim.log.levels.WARN)
+    vim.notify("Select flow before adding marks.", vim.log.levels.WARN)
+    return
   end
-  M.navigate(manager.get_state(M.name))
-end
-
-function M.sel_flow()
-  actions:select_flow()
-  M.navigate(manager.get_state(M.name))
+  local state = manager.get_state(M.name)
+  if renderer.window_exists(state) then
+    M.navigate(state)
+  end
 end
 
 ---Configures the plugin, should be called before the plugin is used.

@@ -16,7 +16,7 @@ local defaults = {
   },
   window = {
     mappings = {
-      ["c"] = "noop", -- copy
+      ["c"] = "sel_flow",
       ["x"] = "noop", -- cut to clipboard
       ["y"] = "noop", -- copy to clipboard
       ["A"] = "noop", -- add directory
@@ -35,7 +35,7 @@ local defaults = {
       ["s"] = "open_split",
       ["v"] = "open_vsplit",
       ["t"] = "open_tabnew",
-      ["w"] = "open_with_window_picker",
+      ["w"] = "noop",
       ["z"] = "close_all_nodes",
       ["p"] = { "toggle_preview", config = { use_float = false } },
     },

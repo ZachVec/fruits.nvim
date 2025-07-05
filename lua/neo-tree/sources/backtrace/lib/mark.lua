@@ -2,7 +2,6 @@
 --- @field path string file path
 --- @field lnum integer line number
 --- @field cnum integer column number
---- @field bufnr integer? buffer number
 --- @field symbol string? symbol name
 --- @field fallback string? fallback name
 local Mark = {}
@@ -10,15 +9,13 @@ local Mark = {}
 ---@param path string
 ---@param lnum integer
 ---@param cnum integer
----@param bufnr integer
 ---@param symbol string?
 ---@param fallback string?
-function Mark:new(path, lnum, cnum, bufnr, symbol, fallback)
+function Mark:new(path, lnum, cnum, symbol, fallback)
   return setmetatable({
     path = path,
     lnum = lnum,
     cnum = cnum,
-    bufnr = bufnr,
     symbol = symbol,
     fallback = fallback,
   }, { __index = Mark })
@@ -37,7 +34,6 @@ function Mark:toNode(id)
     type = "mark",
     path = self.path,
     extra = {
-      bufnr = self.bufnr,
       position = { self.lnum - 1, self.cnum },
     },
   }
@@ -68,7 +64,7 @@ function Mark.loads(dumped)
   local cnum = assert(dumped.cnum, "")
   local symbol = assert(dumped.symbol, "")
   local fallback = dumped.fallback
-  return Mark:new(path, lnum, cnum, vim.fn.bufnr(path), symbol, fallback)
+  return Mark:new(path, lnum, cnum, symbol, fallback)
 end
 
 return Mark
