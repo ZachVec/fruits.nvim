@@ -14,8 +14,10 @@ return {
     dir = "ZachVec/backtrace.nvim",
     dependencies = {
       "nvim-neo-tree/neo-tree.nvim",
+      "stevearc/aerial.nvim",
     },
     keys = {
+      -- map <leader>et to toggle MarkExplorer
       {
         "<leader>et",
         function()
@@ -26,40 +28,23 @@ return {
         end,
         desc = "MarkExplorer",
       },
+      -- map <leader>cm to add mark into flow
       {
-        "<leader>;f",  -- configure this!
+        "<leader>cm",
         function()
-          require("neo-tree.sources.backtrace").selectFlow()
+          require("neo-tree.sources.backtrace").add_mark()
         end,
-        desc = "select workflow",
-      },
-      {
-        "<leader>;a",  -- configure this!
-        function()
-          require("neo-tree.sources.backtrace").addMark()
-        end,
-        desc = "add mark to current workflow",
+        desc = "Add Mark",
       },
     },
   },
+
+  -- add backtrace into neo-tree sources
   {
     "nvim-neo-tree/neo-tree.nvim",
     opts = function(_, opts)
       table.insert(opts.sources, "backtrace")
-      opts.backtrace = {
-        renderers = {
-          flow = {
-            { "indent" },
-            { "icon" },
-            { "name" },
-          },
-          mark = {
-            { "indent" },
-            { "icon" },
-            { "name" },
-          },
-        },
-      }
+      return opts
     end,
   },
 }
@@ -67,12 +52,11 @@ return {
 
 ## Usage
 
-1. Create flow.
-2. Select flow.
-3. Add mark to the selected flow.
-4. Add, rename, delete the flows or marks as you wish!
+1. Create flow: press `a` in explorer to create flow on default.
+2. Choose flow: press `c` in explorer to choose flow.
+3. Add marks: press the key you configured to add marks to the selected flow.
+4. Add, rename, delete the flows or marks in the explorer as you wish!
 
 ## TODO
 
-- [ ] persistence the marks
 - [ ] bugfix
