@@ -60,3 +60,4 @@ return {
 ## TODO
 
 - [ ] bugfix
+- [ ] modify the cursor of existing marks when the file is modified.
