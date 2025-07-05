@@ -83,9 +83,9 @@ end
 function M.sel_flow(state)
   ---@diagnostic disable-next-line: undefined-field
   local node = assert(state.tree:get_node())
-  if node.type ~= "flow" then
-    vim.notify("Please select workflow!", vim.log.levels.WARN)
-    return
+  while node.type ~= "flow" do
+    ---@diagnostic disable-next-line: undefined-field
+    node = assert(state.tree:get_node(node:get_parent_id()))
   end
   actions:sel_flow(node.name)
   navigate(state)
