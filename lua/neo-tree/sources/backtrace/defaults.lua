@@ -1,6 +1,3 @@
-local data = require("aerial.data")
-local window = require("aerial.window")
-
 ---@class Backtrace.Config
 --- @field dir string
 --- @field branch boolean
@@ -11,6 +8,9 @@ local M = {
   branch = true, -- use git branch to save sessions
 
   formatter = function(bufnr, lnum, cnum)
+    local data = require("aerial.data")
+    local window = require("aerial.window")
+
     local bufdata = data.get_or_create(bufnr)
     local pos = window.get_symbol_position(bufdata, lnum, cnum, true)
     local symbol = "Unknown Symbol"
