@@ -22,7 +22,7 @@ local M = {
 
   filters = {
     buftypes = { "nofile", "terminal", "prompt" },
-    filetyps = { "neo-tree-popup" }
+    filetyps = { "neo-tree-popup" },
   },
 
   renderers = {
