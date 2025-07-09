@@ -1,70 +1,78 @@
+---@class BacktraceFlow
+--- @field private marks BacktraceMark[]
+--- @field public new fun(): BacktraceFlow
+--- @field public loads fun(dump: BacktraceDumpedMark[]): BacktraceFlow
+--- @field public dumps fun(self: BacktraceFlow): BacktraceDumpedMark[]
+--- @field public add_mark fun(self: BacktraceFlow, mark: BacktraceMark): BacktraceMark
+--- @field public del_mark fun(self: BacktraceFlow, index: integer): BacktraceMark?
+--- @field public get_mark fun(self: BacktraceFlow, index: integer): BacktraceMark?
+--- @field public swp_mark fun(self: BacktraceFlow, i: integer): boolean swap mark downwards
+--- @field public to_nodes fun(self: BacktraceFlow, id: string, name: string, selected: boolean): BacktraceNode
+--- @field public collects fun(self: BacktraceFlow, container: table<string, BacktraceMark[]>)
+local M = {}
+
 local MARK = require("neo-tree.sources.backtrace.lib.mark")
 
----@class Flow
---- @field marks Mark[]
-local Flow = {}
-
-function Flow:new()
-  return setmetatable({
-    marks = {},
-  }, { __index = Flow })
+function M.new()
+  return setmetatable({ marks = {} }, { __index = M })
 end
 
---- Add mark into this control flow
----@overload fun(mark: Mark, pos: integer)
----@overload fun(mark: Mark)
----@param mark Mark the mark to be added into this flow
----@param pos integer?
-function Flow:addMark(mark, pos)
-  table.insert(self.marks, pos or (#self.marks + 1), mark)
+function M.loads(dump)
+  local ret = M.new()
+  ret.marks = vim.iter(dump):map(MARK.loads):totable()
+  return ret
 end
 
----@param index integer
-function Flow:delMark(index)
-  table.remove(self.marks, index)
+function M:dumps()
+  return vim.iter(self.marks):map(MARK.dumps):totable()
 end
 
----@param id1 integer
----@param id2 integer
-function Flow:swapMark(id1, id2)
-  self.marks[id1], self.marks[id2] = self.marks[id2], self.marks[id1]
+function M:add_mark(mark)
+  table.insert(self.marks, #self.marks + 1, mark)
+  return mark
 end
 
----@param index integer
-function Flow:getMark(index)
+function M:del_mark(index)
+  return table.remove(self.marks, index)
+end
+
+function M:get_mark(index)
   return self.marks[index]
 end
 
----@param id string
----@param name string
----@param is_selected boolean
-function Flow:toNode(id, name, is_selected)
-  ---@param index integer
-  ---@param mark Mark
-  local function toNode(index, mark)
-    return mark:toNode(id .. "." .. tostring(index))
+function M:swp_mark(i)
+  if i >= #self.marks then
+    return false
   end
+  self.marks[i], self.marks[i + 1] = self.marks[i + 1], self.marks[i]
+  return true
+end
+
+function M:to_nodes(id, name, selected)
+  local children = vim
+    .iter(ipairs(self.marks))
+    --- @param index integer
+    --- @param mark BacktraceMark
+    :map(function(index, mark)
+      return mark:to_node(id .. "." .. tostring(index))
+    end)
+    :totable()
   return {
     id = id,
     name = name,
     type = "flow",
-    children = vim.iter(ipairs(self.marks)):map(toNode):totable(),
+    children = children,
     extra = {
-      is_selected = is_selected,
+      selected = selected,
     },
   }
 end
 
----@return DumpedMark[]
-function Flow:dumps()
-  return vim.iter(self.marks):map(MARK.dumps):totable()
+function M:collects(container)
+  --- @param mark BacktraceMark
+  vim.iter(self.marks):each(function(mark)
+    mark:collects(container)
+  end)
 end
 
----@param dumped DumpedMark[]
-function Flow:loads(dumped)
-  local ret = Flow:new()
-  ret.marks = vim.iter(dumped):map(MARK.loads):totable()
-  return ret
-end
-
-return Flow
+return M

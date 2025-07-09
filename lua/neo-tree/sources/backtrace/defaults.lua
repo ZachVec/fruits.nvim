@@ -1,7 +1,30 @@
---- @class Traceback.Config
-local defaults = {
+local data = require("aerial.data")
+local window = require("aerial.window")
+
+---@class Backtrace.Config
+--- @field dir string
+--- @field branch boolean
+--- @field formatter fun(bufnr: integer, lnum: integer, cnum: integer): string
+local M = {
   dir = vim.fn.stdpath("state") .. "/traceback/",
+
   branch = true, -- use git branch to save sessions
+
+  formatter = function(bufnr, lnum, cnum)
+    local bufdata = data.get_or_create(bufnr)
+    local pos = window.get_symbol_position(bufdata, lnum, cnum, true)
+    local symbol = "Unknown Symbol"
+    if pos and pos.exact_symbol then
+      symbol = pos.exact_symbol["name"]
+    end
+    return symbol
+  end,
+
+  filters = {
+    buftypes = { "nofile", "terminal", "prompt" },
+    filetyps = { "neo-tree-popup" }
+  },
+
   renderers = {
     flow = {
       { "indent" },
@@ -38,8 +61,9 @@ local defaults = {
       ["w"] = "noop",
       ["z"] = "close_all_nodes",
       ["p"] = { "toggle_preview", config = { use_float = false } },
+      ["D"] = "debug",
     },
   },
 }
 
-return defaults
+return M

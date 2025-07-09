@@ -22,7 +22,7 @@ local M = {
     if node.type == "mark" then
       highlight = highlights.FILE_NAME
     elseif node.type == "flow" then
-      if vim.tbl_get(node, "extra", "is_selected") then
+      if vim.tbl_get(node, "extra", "selected") then
         text = text .. " (selected)"
       end
       highlight = highlights.DIRECTORY_NAME

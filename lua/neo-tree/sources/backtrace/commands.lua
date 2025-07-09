@@ -1,8 +1,8 @@
-local inputs = require("neo-tree.ui.inputs")
-local renderer = require("neo-tree.ui.renderer")
+local Inputs = require("neo-tree.ui.inputs")
+local Renderer = require("neo-tree.ui.renderer")
 local Preview = require("neo-tree.sources.common.preview")
-local neoutil = require("neo-tree.utils")
-local actions = require("neo-tree.sources.backtrace.lib.actions")
+local Neoutil = require("neo-tree.utils")
+local Backtrace = require("neo-tree.sources.backtrace")
 local navigate = require("neo-tree.sources.backtrace").navigate
 local cc = require("neo-tree.sources.common.commands")
 
@@ -16,7 +16,7 @@ local function open_with_cmd(state, open_cmd, open_file)
       updated = node:expand()
     end
     if updated then
-      renderer.redraw(state)
+      Renderer.redraw(state)
     end
     return
   end
@@ -27,7 +27,7 @@ local function open_with_cmd(state, open_cmd, open_file)
     if type(open_file) == "function" then
       open_file(state, path, open_cmd)
     else
-      neoutil.open_file(state, path, open_cmd)
+      Neoutil.open_file(state, path, open_cmd)
     end
     local extra = node.extra or {}
     local pos = extra.position or extra.end_position
@@ -42,6 +42,11 @@ local function open_with_cmd(state, open_cmd, open_file)
 end
 
 local M = {}
+
+function M.debug(state)
+  local node = assert(state.tree:get_node())
+  vim.notify(vim.inspect(node))
+end
 
 function M.open(state)
   open_with_cmd(state, "e")
@@ -67,12 +72,12 @@ end
 
 ---@param state neotree.StateWithTree
 function M.add_flow(state)
-  inputs.input("Enter flow name", nil, function(flowName)
-    if not flowName then
+  Inputs.input("Enter flow name", nil, function(name)
+    if not name then
       return
     end
-    if not actions:add_flow(flowName) then
-      vim.notify(("Flow %s already exists."):format(flowName), vim.log.levels.WARN)
+    if not Backtrace.manager:create_flow(name) then
+      vim.notify(("Flow %s already exists."):format(name), vim.log.levels.WARN)
       return
     end
     navigate(state)
@@ -87,7 +92,7 @@ function M.sel_flow(state)
     ---@diagnostic disable-next-line: undefined-field
     node = assert(state.tree:get_node(node:get_parent_id()))
   end
-  actions:sel_flow(node.name)
+  assert(Backtrace.manager:select_flow(node.name), ("flow %s not exist!"):format(node.name))
   navigate(state)
 end
 
@@ -97,20 +102,19 @@ function M.delete(state)
   local node = assert(state.tree:get_node())
   local type = node.type
   local message = ("Confirm delete %s?"):format(type)
-  inputs.confirm(message, function(confirmed)
+  Inputs.confirm(message, function(confirmed)
     if not confirmed then
       return
     end
     if node.type == "flow" then
-      actions:del_flow(node.name)
+      assert(Backtrace.manager:remove_flow(node.name), ("flow %s not exist!"):format(node.name))
     elseif node.type == "mark" then
       ---@diagnostic disable-next-line: undefined-field
       local parent = assert(state.tree:get_node(assert(node:get_parent_id())))
       local flow = parent.name
       local ind = vim.split(node.id, ".", { plain = true, trimempty = true })
-      table.remove(ind, 1)
-      assert(#ind == 1)
-      actions:del_mark(flow, assert(tonumber(ind[1])))
+      assert(#ind == 2)
+      Backtrace.manager:remove_mark(flow, assert(tonumber(ind[2])))
     end
     navigate(state)
   end)
@@ -121,20 +125,25 @@ function M.rename(state)
   ---@diagnostic disable-next-line: undefined-field
   local node = assert(state.tree:get_node())
   local msg = ("rename %s from '%s' to:"):format(node.type, node.name)
-  inputs.input(msg, nil, function(name)
+  Inputs.input(msg, nil, function(name)
     if not name then
       return
     end
     if node.type == "flow" then
-      actions:mod_flow(node.name, name)
+      assert(
+        Backtrace.manager:rename_flow(node.name, name),
+        ("flow %s not exist!"):format(node.name)
+      )
     elseif node.type == "name" then
       ---@diagnostic disable-next-line: undefined-field
       local parent = assert(state.tree:get_node(assert(node:get_parent_id())))
       local flow = parent.name
       local ind = vim.split(node.id, ".", { plain = true, trimempty = true })
-      table.remove(ind, 1)
-      assert(#ind == 1)
-      actions:mod_mark(flow, assert(tonumber(ind[1])), name)
+      assert(#ind == 2)
+      assert(
+        Backtrace.manager:rename_mark(flow, assert(tonumber(ind[2])), name),
+        ("flow %s not exist!"):format(node.name)
+      )
     end
     navigate(state)
   end)
