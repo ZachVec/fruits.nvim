@@ -19,7 +19,7 @@ function M.setup(opts)
   end
 end
 
-function M.list_colors()
+function M.list()
   return vim
     .iter(M.opts.hls)
     --- @param hl { name: string, fg: string?, bg: string? }

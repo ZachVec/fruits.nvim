@@ -1,0 +1,28 @@
+--- @alias neotree.sources.mark.Mark {
+---   id: string,
+---   name: string,
+---   type: string,
+---   path: string,
+---   extra: {
+---     mark: {
+---       bufnr: integer,
+---       ns_id: integer,
+---       markid: integer,
+---     }?,
+---     position: {
+---       [1]: integer,
+---       [2]: integer,
+---     }?,
+---   },
+--- }
+---
+--- @alias neotree.sources.mark.Flow {
+---   id: string,
+---   name: string,
+---   type: string,
+---   children: neotree.sources.mark.Mark[],
+---   extra: {
+---     selected: boolean,
+---   },
+--- }
+

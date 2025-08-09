@@ -11,7 +11,7 @@ function M.name(_, node, _)
   local highlight = highlights.DIM_TEXT
   if node.type == "mark" then
     highlight = highlights.FILE_NAME
-  elseif node.type == "flow" then
+  elseif node.type == "directory" then
     highlight = highlights.DIRECTORY_NAME
     if node.extra.selected then
       text = text .. " (selected)"
@@ -32,7 +32,7 @@ function M.icon(config, node, _)
       text = devicon or text
       highlight = hl or highlight
     end
-  elseif node.type == "flow" then
+  elseif node.type == "directory" then
     if node:is_expanded() then
       text = config.folder_open or "-"
     else

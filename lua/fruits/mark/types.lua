@@ -1,0 +1,30 @@
+--- @alias Fruit.mark.MarkView {
+---   name: string,
+---   path: string,
+---   extra: {
+---     mark: {
+---       bufnr: integer,
+---       ns_id: integer,
+---       markid: integer,
+---     }?,
+---     position: {
+---       [1]: integer,
+---       [2]: integer,
+---     }?,
+---   },
+--- }
+---
+--- @alias Fruit.mark.FlowView {
+---   name: string,
+---   children: Fruit.mark.MarkView[],
+---   extra: {
+---     [any]: any,
+---   },
+--- }
+---
+--- @alias Fruit.mark.SerializedMark {
+---   path: string,
+---   name: string,
+---   lnum: integer,
+---   cnum: integer,
+--- }

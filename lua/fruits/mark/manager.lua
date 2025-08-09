@@ -1,120 +1,146 @@
---- @alias Fruit.mark.FlowView { name: string, children: Fruit.mark.MarkView[], extra: { selected: boolean } }
-
 --- @class Fruit.mark.Manager
---- @field protected dirty boolean  need to sync data to disk
---- @field protected ns_id integer
---- @field protected flow_marks table<string, Fruit.mark.Mark[]> flow -> marks mapping
---- @field protected path_marks table<string, Fruit.mark.Mark[]> path -> marks mapping
---- @field public new fun(ns_id: integer, dirty: boolean | nil): Fruit.mark.Manager
---- @field public get_ns_id fun(self: Fruit.mark.Manager): integer
---- @field public loads fun(ns_id: integer, marks: table<string, Fruit.mark.SerializedMark[]>): Fruit.mark.Manager
---- @field public dumps fun(self: Fruit.mark.Manager): table<string, Fruit.mark.SerializedMark[]>
---- @field public sync_needed fun(self: Fruit.mark.Manager): boolean
---- @field public create_flow fun(self: Fruit.mark.Manager, flow: string): boolean Create a new flow
---- @field public remove_flow fun(self: Fruit.mark.Manager, flow: string): boolean Remove an existing flow
---- @field public rename_flow fun(self: Fruit.mark.Manager, old_name: string, new_name: string): boolean Rename an existing flow
---- @field public insert_mark fun(self: Fruit.mark.Manager, flow: string, mark: Fruit.mark.Mark): boolean Insert a mark into a flow
---- @field public remove_mark fun(self: Fruit.mark.Manager, flow: string, index: integer): boolean Remove a mark from a flow by index
---- @field public rename_mark fun(self: Fruit.mark.Manager, flow: string, index: integer, name: string): boolean Rename a mark in a flow by index
---- @field public attach_path fun(self: Fruit.mark.Manager, path: string, bufnr: integer, hl_group: string | nil): nil Attach all marks for a path to a buffer
---- @field public detach_path fun(self: Fruit.mark.Manager, path: string): nil Detach all marks for a path from their buffers
---- @field public update_path fun(self: Fruit.mark.Manager, path: string): nil Update all marks for a path
---- @field public list_flows fun(self: Fruit.mark.Manager): string[]
---- @field public list_marks fun(self: Fruit.mark.Manager, selected: string | nil): Fruit.mark.FlowView[]
+--- @field flow_marks table<string, Fruit.mark.Mark[]> flow -> marks mapping
+--- @field path_marks table<string, Fruit.mark.Mark[]> path -> marks mapping
+--- @field new fun(): Fruit.mark.Manager
+--- @field load fun(marks: table<string, Fruit.mark.SerializedMark[]>): Fruit.mark.Manager
+--- @field dump fun(self: Fruit.mark.Manager): table<string, Fruit.mark.SerializedMark[]>
+--- @field list fun(self: Fruit.mark.Manager, ns_id: integer): Fruit.mark.FlowView[]
+--- @field each_flow fun(self: Fruit.mark.Manager, fn: fun(path: string, marks: Fruit.mark.Mark[]))
+--- @field each_mark fun(self: Fruit.mark.Manager, path: string, fn: fun(mark: Fruit.mark.Mark))
+--- @field create_flow fun(self: Fruit.mark.Manager, flow: string): boolean Create a new flow
+--- @field remove_flow fun(self: Fruit.mark.Manager, flow: string): Fruit.mark.Mark[] | nil Remove an existing flow
+--- @field rename_flow fun(self: Fruit.mark.Manager, old_name: string, new_name: string): boolean Rename an existing flow
+--- @field insert_mark fun(self: Fruit.mark.Manager, flow: string, mark: Fruit.mark.Mark): boolean Insert a mark into a flow
+--- @field remove_mark fun(self: Fruit.mark.Manager, flow: string, index: integer): Fruit.mark.Mark | nil Remove a mark from a flow by index
+--- @field rename_mark fun(self: Fruit.mark.Manager, flow: string, index: integer, name: string): boolean Rename a mark in a flow by index
 local M = {}
 
-function M.new(ns_id, dirty)
+function M.new()
   return setmetatable({
-    ns_id = ns_id,
-    dirty = dirty or true,
     flow_marks = {},
     path_marks = {},
   }, { __index = M })
 end
 
-function M:get_ns_id()
-  return self.ns_id
-end
-
-function M.loads(ns_id, marks)
+function M.load(marks)
   local Mark = require("fruits.mark.marks")
-  local manager = M.new(ns_id, false)
+  local manager = M.new()
   for flow, submarks in pairs(marks) do
-    vim.iter(submarks):map(Mark.loads):each(function(mark)
-      M.insert_mark(manager, flow, mark)
+    manager:create_flow(flow)
+    vim.iter(submarks):map(Mark.load):each(function(mark)
+      manager:insert_mark(flow, mark)
     end)
   end
   return manager
 end
 
-function M:dumps()
+function M:dump()
   local Mark = require("fruits.mark.marks")
   local ret = {}
   for flow, submarks in pairs(self.flow_marks) do
-    ret[flow] = vim.iter(submarks):map(Mark.dumps):totable()
+    ret[flow] = vim.iter(submarks):map(Mark.dump):totable()
   end
   return ret
 end
 
-function M:sync_needed()
-  return self.dirty
+function M:list(ns_id)
+  return vim
+    .iter(self.flow_marks)
+    --- @param flow string
+    --- @param marks Fruit.mark.Mark[]
+    :map(function(flow, marks)
+      return {
+        name = flow,
+        children = vim
+          .iter(marks)
+          --- @param mark Fruit.mark.Mark
+          :map(function(mark)
+            return mark:list(ns_id)
+          end)
+          :totable(),
+        extra = {},
+      }
+    end)
+    :totable()
+end
+
+function M:each_flow(fn)
+  vim.iter(self.path_marks):each(fn)
+end
+
+function M:each_mark(path, fn)
+  vim.iter(self.path_marks[path] or {}):each(fn)
 end
 
 function M:create_flow(flow)
   if self.flow_marks[flow] then
     return false
   end
-
   self.flow_marks[flow] = {}
-  self.dirty = true
   return true
 end
 
 function M:remove_flow(flow)
   if not self.flow_marks[flow] then
-    return false
+    return nil
   end
 
-  for _, mark in ipairs(self.flow_marks[flow]) do
-    mark:detach(self.ns_id)
-    mark:remove(self.path_marks)
+  local marks = self.flow_marks[flow]
+  for _, mark in ipairs(marks) do
+    self.path_marks[mark.path] = vim
+      .iter(self.path_marks[mark.path])
+      :filter(
+        --- @param m Fruit.mark.Mark
+        function(m)
+          return m ~= mark
+        end
+      )
+      :totable()
   end
-
   self.flow_marks[flow] = nil
-  self.dirty = true
-  return true
+  return marks
 end
 
 function M:rename_flow(old_name, new_name)
   if not self.flow_marks[old_name] or self.flow_marks[new_name] then
     return false
   end
-
   self.flow_marks[new_name] = self.flow_marks[old_name]
   self.flow_marks[old_name] = nil
-  self.dirty = true
   return true
 end
 
 function M:insert_mark(flow, mark)
-  local marks = self.flow_marks[flow] or {}
+  if not self.flow_marks[flow] then
+    return false
+  end
+
+  local marks = self.flow_marks[flow]
   table.insert(marks, mark)
   self.flow_marks[flow] = marks
-  mark:gather(self.path_marks)
-  self.dirty = true
+  local path_marks = self.path_marks[mark.path] or {}
+  table.insert(path_marks, mark)
+  self.path_marks[mark.path] = path_marks
   return true
 end
 
 function M:remove_mark(flow, index)
   if not self.flow_marks[flow] or #self.flow_marks[flow] < index then
-    return false
+    return nil
   end
 
   --- @type Fruit.mark.Mark
   local mark = table.remove(self.flow_marks[flow], index)
-  mark:detach(self.ns_id):remove(self.path_marks)
-  self.dirty = true
-  return true
+  self.path_marks[mark.path] = vim
+    .iter(self.path_marks[mark.path])
+    :filter(
+      --- @param m Fruit.mark.Mark
+      function(m)
+        return m ~= mark
+      end
+    )
+    :totable()
+  return mark
 end
 
 function M:rename_mark(flow, index, name)
@@ -126,56 +152,37 @@ function M:rename_mark(flow, index, name)
   self.dirty = true
   return true
 end
-
-function M:attach_path(path, bufnr, hl_group)
-  if not self.path_marks[path] then
-    return
-  end
-
-  for _, mark in ipairs(self.path_marks[path]) do
-    mark:attach(self.ns_id, bufnr, hl_group)
-  end
-end
-
-function M:detach_path(path)
-  if not self.path_marks[path] then
-    return
-  end
-
-  for _, mark in ipairs(self.path_marks[path]) do
-    mark:detach(self.ns_id)
-  end
-end
-
-function M:update_path(path)
-  if not self.path_marks[path] then
-    return
-  end
-
-  for _, mark in ipairs(self.path_marks[path]) do
-    self.dirty = self.dirty and mark:update(self.ns_id)
-  end
-end
-
-function M:list_flows()
-  return vim.tbl_keys(self.flow_marks)
-end
-
-function M:list_marks(selected)
-  return vim
-    .iter(self.flow_marks)
-    --- @param flow string
-    --- @param marks Fruit.mark.Mark[]
-    :map(function(flow, marks)
-      return {
-        name = flow,
-        children = vim.iter(marks):map(require("fruits.mark.marks").lookup):totable(),
-        extra = {
-          selected = flow == selected,
-        },
-      }
-    end)
-    :totable()
-end
-
+--
+-- function M:attach_path(path, bufnr, sign_text)
+--   if not self.path_marks[path] then
+--     return false
+--   end
+--
+--   for _, mark in ipairs(self.path_marks[path]) do
+--     mark:attach(self.ns_id, bufnr, sign_text)
+--   end
+--   return true
+-- end
+--
+-- function M:detach_path(path)
+--   --- @type table<string, Fruit.mark.Mark[]>
+--   local marks
+--
+--   if not path then
+--     marks = self.path_marks
+--   elseif not self.path_marks[path] then
+--     return false
+--   else
+--     marks = { path = self.path_marks[path] }
+--   end
+--
+--   for _, _marks in pairs(marks) do
+--     for _, mark in ipairs(_marks) do
+--       mark:detach(self.ns_id)
+--     end
+--   end
+--
+--   return true
+-- end
+--
 return M

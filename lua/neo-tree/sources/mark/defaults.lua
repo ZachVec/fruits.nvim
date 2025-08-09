@@ -1,10 +1,5 @@
 local M = {
   renderers = {
-    flow = {
-      { "indent" },
-      { "icon" },
-      { "name" },
-    },
     mark = {
       { "indent" },
       { "icon" },
@@ -30,6 +25,7 @@ local M = {
       ["<cr>"] = "open",
       ["<esc>"] = "cancel",
       ["D"] = "debug",
+      ["R"] = "noop"
     },
   },
 }
