@@ -7,13 +7,6 @@ Create marks and track it via neo-tree.
 ```lua
 {
   "ZachVec/fruits.nvim",
-  dependencies = {
-    "nvim-neo-tree/neo-tree.nvim",
-  },
-  keys = {
-    { "<leader>am", function () require("neo-tree.sources.mark"):create_mark() end, desc = "Create Mark at cursor" },
-    { "<leader>em", function () require("neo-tree.command").execute({ source = "mark", toggle = true }) end, desc = "Mark Explorer" }
-  },
   opts = {
     mark = {
       -- your highlight configuration comes here
@@ -23,6 +16,8 @@ Create marks and track it via neo-tree.
   }
 }
 ```
+
+Check [neo-tree-marks](https://github.com/ZachVec/neo-tree-marks.nvim) for neo-tree integration.
 
 ## Configuration
 
@@ -48,5 +43,3 @@ Create marks and track it via neo-tree.
   end,
 }
 ```
-
-And set the key map to highlight
