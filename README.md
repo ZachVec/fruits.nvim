@@ -1,8 +1,8 @@
-# 🍇 fruit.nvim
+# 🍇 fruits.nvim
 
 A collection of QoL plugins for NeoVim!
 
-## Moduels
+## Modules
 
 | Fruit | Description |
 | --------------- | --------------- |
