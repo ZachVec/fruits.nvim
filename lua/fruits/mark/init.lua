@@ -1,8 +1,13 @@
 --- @class Fruit.mark
 --- @field public opts Fruit.mark.Opts
+--- @field public path string
 --- @field public ns_id integer
 --- @field public dirty boolean
 --- @field public manager Fruit.mark.Manager
+--- @field public save fun(self: Fruit.mark, path: string)
+--- @field public load fun(self: Fruit.mark, path: string)
+--- @field public attach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
+--- @field public detach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
 --- @field public current fun(self: Fruit.mark): string get cache filename of current project
 --- @field public autocmd fun(self: Fruit.mark): nil register all auto commands
 --- @field public bfilter fun(self: Fruit.mark): fun(bufnr: integer): boolean buffer filter for buffers to attach
@@ -16,6 +21,76 @@
 --- @field public remove_mark fun(self: Fruit.mark, flow: string, index: integer): boolean Remove a mark from a flow by index
 --- @field public rename_mark fun(self: Fruit.mark, flow: string, index: integer, name: string): boolean Rename a mark in a flow by index
 local M = {}
+
+function M:save(path)
+  if not self.dirty then
+    return
+  end
+  local buffer = vim.json.encode(self.manager:dump())
+  vim.fn.mkdir(self.opts.directory, "p")
+  pcall(vim.fn.writefile, { buffer }, path)
+  self.dirty = false
+end
+
+function M:load(path)
+  if not (vim.uv or vim.loop).fs_stat(path) or vim.fn.isdirectory(path) == 1 then
+    self.manager = require("fruits.mark.manager").new()
+    self.dirty = false
+  else
+    local buffer = vim.json.decode(vim.fn.readfile(path)[1])
+    self.manager = require("fruits.mark.manager").load(buffer)
+    self.dirty = false
+  end
+end
+
+function M:attach(opts)
+  local bufnrs = opts.bufnrs or {}
+  if type(bufnrs) == "integer" then
+    bufnrs = { bufnrs }
+  end
+
+  local paths = opts.paths or {}
+  if type(paths) == "string" then
+    paths = { paths }
+  end
+  --- @param path string
+  vim.iter(paths):each(function(path)
+    table.insert(bufnrs, vim.fn.bufadd(path))
+  end)
+
+  --- @param bufnr integer
+  vim.iter(bufnrs):each(function(bufnr)
+    local bufname = vim.api.nvim_buf_get_name(bufnr)
+    if bufname ~= "" and vim.fn.filereadable(bufname) then
+      self.manager:each_mark(bufname, function(mark)
+        mark:attach(self.ns_id, bufnr, self.opts.sign_text)
+      end)
+    end
+  end)
+end
+
+function M:detach(opts)
+  local paths = opts.paths or {}
+  if type(paths) == "string" then
+    paths = { paths }
+  end
+  local bufnrs = opts.bufnrs or {}
+  if type(bufnrs) == "integer" then
+    bufnrs = { bufnrs }
+  end
+  --- @param bufnr integer
+  vim.iter(bufnrs):each(function(bufnr)
+    table.insert(paths, vim.api.nvim_buf_get_name(bufnr))
+  end)
+
+  --- @param path string
+  vim.iter(paths):each(function(path)
+    -- local bufname = vim.api.nvim_buf_get_name(bufnr)
+    self.manager:each_mark(path, function(mark)
+      self.dirty = mark:detach(self.ns_id) or self.dirty
+    end)
+  end)
+end
 
 function M:current()
   local function current_branch()
@@ -97,27 +172,10 @@ function M.setup(opts)
     vim.api.nvim_set_hl(0, "FruitMarkLine", M.opts.hl_line)
   end
 
-  local path = M:current()
-  M.ns_id = vim.api.nvim_create_namespace(path)
-  if not (vim.uv or vim.loop).fs_stat(path) or vim.fn.isdirectory(path) == 1 then
-    M.manager = require("fruits.mark.manager").new()
-    M.dirty = true
-  else
-    local buffer = vim.json.decode(vim.fn.readfile(path)[1])
-    M.manager = require("fruits.mark.manager").load(buffer)
-    M.dirty = false
-  end
-
-  --- @param bufnr integer
-  vim.iter(vim.api.nvim_list_bufs()):filter(M.bfilter(M)):each(function(bufnr)
-    local bufname = vim.api.nvim_buf_get_name(bufnr)
-    if bufname ~= "" and vim.fn.filereadable(bufname) == 1 then
-      M.manager:each_mark(bufname, function(mark)
-        mark:attach(M.ns_id, bufnr, M.opts.sign_text)
-      end)
-    end
-  end)
-
+  M.path = M:current()
+  M.ns_id = vim.api.nvim_create_namespace(M.path)
+  M:load(M.path)
+  M:attach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(M.bfilter(M)):totable() })
   M:autocmd()
 
   --- @param fn fun(self: Fruit.mark, ...): boolean
@@ -127,6 +185,7 @@ function M.setup(opts)
       if not fn(self, ...) then
         return false
       end
+      ---@diagnostic disable-next-line: invisible
       self.dirty = true
       return true
     end
@@ -150,18 +209,8 @@ function M:autocmd()
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = augroup,
     callback = function()
-      self.manager:each_flow(function(_, marks)
-        --- @param mark Fruit.mark.Mark
-        vim.iter(marks):each(function(mark)
-          self.dirty = mark:detach(self.ns_id) or self.dirty
-        end)
-      end)
-      if not self.dirty then
-        return
-      end
-      local buffer = vim.json.encode(self.manager:dump())
-      vim.fn.mkdir(self.opts.directory, "p")
-      pcall(vim.fn.writefile, { buffer }, self:current())
+      self:detach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(bfilter):totable() })
+      self:save(self.path)
     end,
   })
 
@@ -169,13 +218,10 @@ function M:autocmd()
   vim.api.nvim_create_autocmd("BufReadPost", {
     group = augroup,
     callback = function(event)
-      if not bfilter(event.buf) then
-        return
+      if bfilter(event.buf) then
+        self:attach({ paths = event.match })
+        vim.api.nvim_exec_autocmds("User", { pattern = "FruitMarkAttach" })
       end
-      self.manager:each_mark(event.match, function(mark)
-        mark:attach(self.ns_id, event.buf, M.opts.sign_text)
-      end)
-      vim.api.nvim_exec_autocmds("User", { pattern = "FruitMarkAttach" })
     end,
   })
 
@@ -183,13 +229,10 @@ function M:autocmd()
   vim.api.nvim_create_autocmd("BufDelete", {
     group = augroup,
     callback = function(event)
-      if not bfilter(event.buf) then
-        return
+      if bfilter(event.buf) then
+        self:detach({ paths = event.match })
+        vim.api.nvim_exec_autocmds("User", { pattern = "FruitMarkDetach" })
       end
-      self.manager:each_mark(event.match, function(mark)
-        mark:detach(self.ns_id)
-      end)
-      vim.api.nvim_exec_autocmds("User", { pattern = "FruitMarkDetach" })
     end,
   })
 end
