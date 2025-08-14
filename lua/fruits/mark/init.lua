@@ -62,9 +62,14 @@ function M:attach(opts)
   vim.iter(bufnrs):each(function(bufnr)
     local bufname = vim.api.nvim_buf_get_name(bufnr)
     if bufname ~= "" and vim.fn.filereadable(bufname) then
-      self.manager:each_mark(bufname, function(mark)
-        mark:attach(self.ns_id, bufnr, self.opts.sign_text)
-      end)
+      if pcall(vim.fn.bufload, bufnr) then
+        self.manager:each_mark(bufname, function(mark)
+          mark:attach(self.ns_id, bufnr, self.opts.sign_text)
+        end)
+      else
+        local message = ("Swapfile for %s found, skip loading."):format(bufname)
+        vim.notify(message, vim.log.levels.WARN)
+      end
     end
   end)
 end
@@ -139,7 +144,7 @@ function M:insert_mark(flow)
   local lnum, cnum = cur[1] - 1, cur[2]
   local name = self.opts.formatter(0, path, lnum, cnum)
   local mark = require("fruits.mark.marks").new(path, name, lnum, cnum)
-  mark:attach(self.ns_id, 0, M.opts.sign_text)
+  mark:attach(self.ns_id, 0, self.opts.sign_text)
   return self.manager:insert_mark(flow, mark)
 end
 
