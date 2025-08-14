@@ -1,19 +1,19 @@
 --- @class Fruit.mark
---- @field public opts Fruit.mark.Opts
---- @field public path string
---- @field public ns_id integer
---- @field public dirty boolean
---- @field public manager Fruit.mark.Manager
---- @field public save fun(self: Fruit.mark, path: string)
---- @field public load fun(self: Fruit.mark, path: string)
---- @field public attach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
---- @field public detach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
---- @field public current fun(self: Fruit.mark): string get cache filename of current project
---- @field public autocmd fun(self: Fruit.mark): nil register all auto commands
---- @field public bfilter fun(self: Fruit.mark): fun(bufnr: integer): boolean buffer filter for buffers to attach
+--- @field private opts Fruit.mark.Opts
+--- @field private path string
+--- @field private ns_id integer
+--- @field private dirty boolean
+--- @field private manager Fruit.mark.Manager
+--- @field private save fun(self: Fruit.mark, path: string)
+--- @field private load fun(self: Fruit.mark, path: string)
+--- @field private attach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
+--- @field private detach fun(self: Fruit.mark, opts: { bufnrs: integer | integer[] | nil, paths: string | string[] })
+--- @field private current fun(self: Fruit.mark): string get cache filename of current project
+--- @field private autocmd fun(self: Fruit.mark): nil register all auto commands
+--- @field private bfilter fun(self: Fruit.mark): fun(bufnr: integer): boolean buffer filter for buffers to attach
+--- @field public setup fun(opts: Fruit.mark.Opts | nil)
 --- @field public list_flows fun(self: Fruit.mark): string[]
 --- @field public list_marks fun(self: Fruit.mark): Fruit.mark.FlowView[]
---- @field public setup fun(opts: Fruit.mark.Opts | nil)
 --- @field public create_flow fun(self: Fruit.mark, flow: string): boolean Create a new flow
 --- @field public remove_flow fun(self: Fruit.mark, flow: string): boolean Remove an existing flow
 --- @field public rename_flow fun(self: Fruit.mark, old_name: string, new_name: string): boolean Rename an existing flow
@@ -122,52 +122,6 @@ function M:bfilter()
   end
 end
 
-function M:create_flow(flow)
-  return self.manager:create_flow(flow)
-end
-
-function M:remove_flow(flow)
-  local marks = self.manager:remove_flow(flow)
-  for _, mark in ipairs(marks or {}) do
-    mark:detach(self.ns_id)
-  end
-  return marks ~= nil
-end
-
-function M:rename_flow(old_name, new_name)
-  return self.manager:rename_flow(old_name, new_name)
-end
-
-function M:insert_mark(flow)
-  local path = vim.api.nvim_buf_get_name(0)
-  local cur = vim.api.nvim_win_get_cursor(0)
-  local lnum, cnum = cur[1] - 1, cur[2]
-  local name = self.opts.formatter(0, path, lnum, cnum)
-  local mark = require("fruits.mark.marks").new(path, name, lnum, cnum)
-  mark:attach(self.ns_id, 0, self.opts.sign_text)
-  return self.manager:insert_mark(flow, mark)
-end
-
-function M:remove_mark(flow, index)
-  local mark = self.manager:remove_mark(flow, index)
-  if mark then
-    mark:detach(self.ns_id)
-  end
-  return mark ~= nil
-end
-
-function M:rename_mark(flow, index, name)
-  return self.manager:rename_mark(flow, index, name)
-end
-
-function M:list_flows()
-  return vim.tbl_keys(self.manager.flow_marks)
-end
-
-function M:list_marks()
-  return self.manager:list(self.ns_id)
-end
-
 function M.setup(opts)
   M.opts = vim.tbl_deep_extend("force", require("fruits.mark.defaults"), opts or {})
   if M.opts.sign_text and M.opts.hl_sign then
@@ -240,6 +194,52 @@ function M:autocmd()
       end
     end,
   })
+end
+
+function M:create_flow(flow)
+  return self.manager:create_flow(flow)
+end
+
+function M:remove_flow(flow)
+  local marks = self.manager:remove_flow(flow)
+  for _, mark in ipairs(marks or {}) do
+    mark:detach(self.ns_id)
+  end
+  return marks ~= nil
+end
+
+function M:rename_flow(old_name, new_name)
+  return self.manager:rename_flow(old_name, new_name)
+end
+
+function M:insert_mark(flow)
+  local path = vim.api.nvim_buf_get_name(0)
+  local cur = vim.api.nvim_win_get_cursor(0)
+  local lnum, cnum = cur[1] - 1, cur[2]
+  local name = self.opts.formatter(0, path, lnum, cnum)
+  local mark = require("fruits.mark.marks").new(path, name, lnum, cnum)
+  mark:attach(self.ns_id, 0, self.opts.sign_text)
+  return self.manager:insert_mark(flow, mark)
+end
+
+function M:remove_mark(flow, index)
+  local mark = self.manager:remove_mark(flow, index)
+  if mark then
+    mark:detach(self.ns_id)
+  end
+  return mark ~= nil
+end
+
+function M:rename_mark(flow, index, name)
+  return self.manager:rename_mark(flow, index, name)
+end
+
+function M:list_flows()
+  return vim.tbl_keys(self.manager.flow_marks)
+end
+
+function M:list_marks()
+  return self.manager:list(self.ns_id)
 end
 
 return M
