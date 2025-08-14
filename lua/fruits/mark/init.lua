@@ -194,6 +194,23 @@ function M:autocmd()
       end
     end,
   })
+
+  vim.api.nvim_create_autocmd("User", {
+    pattern = { "PersistenceLoadPre" },
+    callback = function()
+      self:detach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(bfilter):totable() })
+      self:save(self.path)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("User", {
+    pattern = { "PersistenceLoadPost" },
+    callback = function()
+      self.path = self:current()
+      self:load(self.path)
+      self:attach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(bfilter):totable() })
+    end,
+  })
 end
 
 function M:create_flow(flow)
