@@ -17,7 +17,7 @@ Create marks and track it via neo-tree.
 }
 ```
 
-Check [neo-tree-marks](https://github.com/ZachVec/neo-tree-marks.nvim) for neo-tree integration.
+Check [neo-tree-marks](https://github.com/ZachVec/neo-tree-mark.nvim) for neo-tree integration.
 
 ## Configuration
 
