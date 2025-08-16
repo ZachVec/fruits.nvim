@@ -137,6 +137,16 @@ function M.setup(opts)
   M:attach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(M.bfilter(M)):totable() })
   M:autocmd()
 
+  vim.api.nvim_create_autocmd("User", {
+    pattern = { "PersistenceLoadPre" },
+    callback = function()
+      M:detach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(M.bfilter(M)):totable() })
+      M:save(M.path)
+      M.path = M:current()
+      M:load(M.path)
+    end,
+  })
+
   --- @param fn fun(self: Fruit.mark, ...): boolean
   local function wrapper(fn)
     --- @param self Fruit.mark
@@ -192,23 +202,6 @@ function M:autocmd()
         self:detach({ paths = event.match })
         vim.api.nvim_exec_autocmds("User", { pattern = "FruitMarkDetach" })
       end
-    end,
-  })
-
-  vim.api.nvim_create_autocmd("User", {
-    pattern = { "PersistenceLoadPre" },
-    callback = function()
-      self:detach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(bfilter):totable() })
-      self:save(self.path)
-    end,
-  })
-
-  vim.api.nvim_create_autocmd("User", {
-    pattern = { "PersistenceLoadPost" },
-    callback = function()
-      self.path = self:current()
-      self:load(self.path)
-      self:attach({ bufnrs = vim.iter(vim.api.nvim_list_bufs()):filter(bfilter):totable() })
     end,
   })
 end
