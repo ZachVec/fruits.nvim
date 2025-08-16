@@ -67,7 +67,7 @@ function M:attach(opts)
           mark:attach(self.ns_id, bufnr, self.opts.sign_text)
         end)
       else
-        local message = ("Swapfile for %s found, skip loading."):format(bufname)
+        local message = ("Error on loading %s, skip."):format(bufname)
         vim.notify(message, vim.log.levels.WARN)
       end
     end
